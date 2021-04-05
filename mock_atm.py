@@ -1,89 +1,193 @@
 # Import relevant libraries and dependencies 
 import time
 import sys
+import random
+import re
 
 # Launch user database with existing customer data
 user_database = {
-    'Rain': ['passRain', 1000000], 
-    'Femi': ['passFemi', 500000], 
-    'Nonso': ['passNonso', 450000], 
-    'Seyi': ['passSeyi', 80000]
+    '0705480437': ['Seyi', 'Onifade', 'seyioni@zuri.com', 'passSeyi', 100000], 
+    '0688874292': ['Nonso', 'Obi', 'nonsobi@gmail.com', 'non1so', 80000]
     }
 
-name = " " # Initialize global name variable for usage across functions
+complaints = {} # Empty dictionary to store user complaints
+account_number = " " # Initialize account_number variable for usage across functions
  
-def PasswordChecker(passkey):
+def passwordChecker(passkey):
     """
     Confirms validity of newly created password. 
-    Only passwords with at least 5 characters are accepted. 
-    To improve password difficulty, code could be extended to accept only passwords with minimum 5 characters,
-    and at least 1 uppercase letter.
+    Only passwords with at least 5 characters are accepted.
+
+    Args:
+        (str) passkey - a string of letters and numbers provided as password
+
+    Returns:
+        (str) passkey - an approved passkey of minimum 5 characters
     """
-    global user_database, name
     while len(passkey) < 5:
-        print('\nNote: Password should have at least 5 characters')
+        print('\n*****Password should have at least 5 characters*****')
         passkey = input('\nEnter password: ')
-    if len(passkey) >= 5:
-        user_database[name][0] = passkey
-        print('\nNew password set...')
- 
- 
-def  AccountCreationWizard():
+    else:
+        return passkey
+
+
+def emailChecker(email):
+    """
+    Checks email address and confirms it is a valid address. 
+    A valid email address follows the format: name@website.domain
+
+    Args:
+        (str) email - the user provided email address
+
+    Returns:
+        (str) valid_email - an approved email address matching the provided standard
+    """
+    valid_email = re.search("^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$", email)
+    
+    while valid_email == None:
+        print("\nInvalid email format. Try again...")
+        email = input("\nEmail address: ")
+        valid_email = re.search("^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$", email)
+    else:
+        return valid_email
+
+
+def accountNumberGenerator():
+    """
+    Generates a unique 10-digit account number for each user. 
+    As with the Nigerian banking system, every account number must begin with a '0'. 
+    Every other account number generation rule/practice is ignored.
+
+    Returns:
+        (str) account_number - a valid account number that doesn't already exist in the database
+    """
+    
+    first = '0'
+    last = str(random.randrange(111111111, 999999999))
+    account_number = (first+last)
+    while account_number in user_database.keys():
+        accountNumberGenerator() # Run the program again if generated account number already exists
+    else:
+        print(f'\nYour new account number is: {account_number}')
+        return account_number
+    
+
+def  accountCreationWizard():
     """
     Receives new user's desired username and password and append to the names and passwords lists. 
     Also assign a starting balance of NGN 0 to the user's balance. Does not allow new users use an already existing username. 
     """
-    global user_database, name # inherit and update the global variable user_database
+    global user_database, account_number # inherit and update the global variable user_database
     
     print('\nRain Account Creation Wizard!')
-    name = input('\nName: ').capitalize()
-    while name in user_database.keys(): # Check if name already exists.
-        print('\nThis username already exists. Try again...')
-        name = input('\nName: ').capitalize()
-    if name not in user_database.keys():
-        print(f'\nUsername stored as "{name}"')
-        user_database[name] = ['', 0] # Initialize new database slot for variable 'name' with placeholder password and balance
-        print('\nNote: Password should have at least 5 characters')
-        password = input('\nPassword: ')
-        PasswordChecker(password)
-        print(f'\nAccount Setup complete...')
-        print('----------'*5)
+    first_name = input('\nFirst Name: ').capitalize()
+    last_name = input('\nLast Name: ').capitalize()
+    email = input('\nEmail Address: ').lower()
+    approved_email = emailChecker(email) # Confirm provided email address is of valid format
+    print('')
+    print('\n*****Note: Password should have at least 5 characters*****')
+    password = input('\nPassword: ')
+    approved_password = passwordChecker(password) # Confirm password contains atleast 5 characters
+    account_number = accountNumberGenerator()
+    starting_balance = 0
+    user_database[account_number] = [first_name, last_name, approved_email, approved_password, starting_balance]
+    print(f'\nAccount Setup complete...')
+    loginWizard() # Launch the login portal once registration is successful
     
     
-def LoginWizard():
+def loginWizard():
     """
     Requests for user's name and password and confirms match with existing database before proceeding to the transaction wizard.
     Exits the program if user attempts 5 incorrect password entries.
     """
-    global name, user_database # inherit and update the global variables name and user_database
+    global account_number, user_database # inherit and update the global variables name and user_database
     
     print('-----'*5)
     print('\nRain Account Login Portal')
     print('-----'*5)
-    name = input('\nName: ').capitalize()
-    while name not in user_database.keys():
-        print('\nThe name you entered does not exist.')
-        name = input('\nEnter name to login: ').capitalize()
+    account_number = input('\nAccount Number: ')
+    while account_number not in user_database.keys(): # Immediately confirm validity of account number before proceeding
+        print('\nAccount not found. Enter a valid account number')
+        account_number = input('\nAccount Number: ')
     
-    if name in user_database.keys():
+    else:
         password = input('\nPassword: ')
         password_count = 1 #Track incorrect password attempts
         
-        while password != user_database[name][0]:
-            print('\nThe password you entered does not match. Try again...')
-            print(f'You have {5 - password_count} attempts remaining')
+        while password != user_database[account_number][3]:
+            print('\nIncorrect password. Try again...')
+            print(f'\nYou have {5 - password_count} attempts remaining')
             password = input('\nPassword: ')
             password_count += 1
             if password_count == 5:
                 sys.exit('\nToo many incorrect password attempts. Try again later...')
                 
-        if password == user_database[name][0]:
+        else:
             localtime = time.asctime( time.localtime(time.time()) )
-            print ("\nLogin Successful!", localtime)
+            print("\nLogin Successful!", localtime)
             print('----------'*5)
-       
- 
-def TransactionWizard():
+            transactionWizard()
+
+
+def withdrawal(withdraw_amount):
+    """
+    Confirms the user wants to proceed with the withdrawal of said amount, 
+    and then proceeds to verify user's balance is enough for such withdrawal.
+    If withdrawal is possible within the existing balance, approve withdrawal and update the balance.
+    Else, user is alerted if balance is insufficient and the transaction is terminated.
+
+    Args:
+        (int) withdraw_amount - the amount the user wants to withdraw
+    """
+    confirm_withdraw = input(f'\nWithdraw {withdraw_amount}?[y/n]\n').lower()
+    
+    if confirm_withdraw == 'y':
+        if withdraw_amount <= user_database[account_number][-1]: # Confirm the withdrawal amount is less than the balance
+            user_database[account_number][-1] -= withdraw_amount
+            print(f"\nWithdrawal Successful! Please take your cash.")
+        else: # Cancel transaction if otherwise
+            print('\nInsufficient balance...')
+    elif confirm_withdraw == 'n': # Cancel withdrawal if user selects "n"
+        print('\nWithdrawal canceled!')
+    else:
+        print('\nInvalid selection...')
+        withdrawal(withdraw_amount) # Keep program running until a suitable response is provided 
+
+
+def deposit(deposit_amount):
+    """
+    Receives as input the amount desired to be deposited by the user.
+    Confirms the deposit amount, and adds same to the user's balance. 
+    Terminate the transaction if the user' changes their mind.
+
+    Args:
+        (int) deposit_amount - the amount the user wishes to deposit
+    """
+    confirm_deposit = input(f'\nDeposit {deposit_amount}? [y/n] \n').lower()
+    
+    if confirm_deposit =='y':
+        user_database[account_number][-1] -= deposit_amount
+        print(f"\nTransaction Successful!")
+    elif confirm_deposit == 'n':
+        print('\nDeposit canceled!')
+    else:
+        print('\nInvalid selction...')
+        deposit(deposit_amount) # Keep program running until a suitable answer is provided
+
+
+def changePassword():
+    """
+    Receives new password as input from the user, confirms its validity, 
+    and stores it in the user_database as a replacement for the existing password.
+    """
+    print('\n*****Note: Password should be at least 5 characters*****')
+    password = input('\nEnter new password: ')
+    approved_password = passwordChecker(password) # Confirm validity of new password
+    print('\nNew password set...')
+    user_database[account_number][3] = approved_password
+
+
+def transactionWizard():
     """
     Receive user's desired transaction as a number input and execute. 
     Possible transactions include withdrawal(1), deposits(2), balance checks(3), and dispute resolution(4).
@@ -93,49 +197,30 @@ def TransactionWizard():
     Dispute resolution: Receives user's complaint and sends to where it may be needed.
     """
    
-    global name, user_database  # inherit and update (if needed) the global variables name and user_database
-    balance = user_database[name][1]
+    global account_number, user_database  # inherit and update (if needed) the global variables name and user_database
+    balance = user_database[account_number][-1]
+    first_name = user_database[account_number][0]
     # Receive action command from user
-    print(f'\nWelcome {name}! What would you like to do today?')
+    print(f'\nWelcome {first_name}! What would you like to do today?')
     
-    action = int(input("\nEnter: \n1 - Withdrawal \n2 - Deposit \n3 - Check Account Balance \n4 - Dispute Resolution \n5 - Change Password \n"))
-    
+    try: # Catch the error if someone enters a string instead of an integer value
+        action = int(input("\nEnter: \n1 - Withdrawal \n2 - Deposit \n3 - Check Account Balance \n4 - Dispute Resolution \n5 - Change Password \n"))
+    except TypeError:
+        print("Expected a number, got a string. Try again later...")
+
     while action not in range(1, 6):
         print('\nYou have selected an invalid option. Please try again...')
-        action = int(input("\nEnter: \n1 - Withdrawal \n2 - Deposit \n3 - Balance Checker \n4 - Dispute Resolution \n"))
+        action = int(input("\nEnter: \n1 - Withdrawal \n2 - Deposit \n3 - Balance Checker \n4 - Dispute Resolution \n5 - Change Password\n"))
     
     if action == 1:
         # Receive amount to be withdrawn and subtract it from user's balance
         withdraw_amount = int(input("\nHow much would you like to withdraw? \n"))
-        confirm_withdraw = input(f'\nWithdraw {withdraw_amount}?[y/n]\n').lower()
+        withdrawal(withdraw_amount)
         
-        while confirm_withdraw not in ['y', 'n']:
-            print('\nInvalid selection...')
-            confirm_withdraw = input(f'\nWithdraw {withdraw_amount}? [y/n] \n').lower()
-        
-        if confirm_withdraw == 'y':
-            if withdraw_amount <= balance: # Confirm the withdrawal amount is less than the balance
-                user_database[name][1] = balance - withdraw_amount
-                print(f"\nWithdrawal Successful! Please take your cash.")
-            else: # Cancel transaction if otherwise
-                print('\nInsufficient balance...')
-        else: # Cancel withdrawal if user selects "n"
-            print('\nWithdrawal canceled!')
-    
     elif action == 2:
-        # Receice amount to deposit and add to user's previous balance 
-        deposit = int(input("\nHow much would you like to deposit? \n"))
-        confirm_deposit = input(f'\Deposit {deposit}? [y/n] \n').lower()
-        
-        while confirm_deposit not in ['y', 'n']:
-            print('\nInvalid selction...')
-            confirm_deposit = input(f'\nDeposit {deposit}? [y/n] \n').lower()
-        
-        if confirm_deposit =='y':
-            user_database[name][1] = balance + deposit
-            print(f"\nTransaction Successful!")
-        else:
-            print('\nDeposit canceled!')
+        # Receive amount to deposit and add to user's previous balance 
+        deposit_amount = int(input("\nHow much would you like to deposit? \n"))
+        deposit(deposit_amount)
         
     elif action == 3:
         # Check user' balance
@@ -144,56 +229,41 @@ def TransactionWizard():
     elif action == 4:
         # Record user complaint and exit
         complaint = input("\nWhat issue would you like to report? \n")
+        complaints[account_number] = complaint
         print("\nThank you for contacting us. Your complaint will be reviewed immediately.")
         
     elif action == 5:
-        # Receive new password and store it in the user_database
-        print('\nNote: Password should be at least 5 characters')
-        password = input('\nEnter new password: ')
-        PasswordChecker(password)
-    
-    else:
-        print('\nInvalid Selection...')
- 
-
-def program():
-    """
-    Determine if user first wants to create an account. 
-    If yes, create account and store new details before running the login and transaction wizards.
-    Otherwise, immediately run the login and transaction wizards for an existing account holder.
-    """
-    print('\nRain Bank')
-    print('-----'*5)
-    create_or_login = input('\nEnter 1 to create an account or 2 to log  into existing account: ')
-
-    while create_or_login not in ['1', '2']:
-        print('\nInvalid Selection. Try again...')
-        create_or_login = input('\nEnter 1 to create an account or 2 to log  into existing account: ')
-
-    if create_or_login == '1':
-        AccountCreationWizard()
-        LoginWizard()
-        TransactionWizard()
-    elif create_or_login == '2':
-        LoginWizard()
-        TransactionWizard()
+        # Receive new password entry and confirm it matches stated guidelines
+        changePassword()
     
 
 def main():
     """
-    Keeps the program running until the user decides otherwise. Allows user decide whether or not they want to perform another transaction.
+    First determines if the user wishes to create an account (as a new user) or login (old user).
+    Allows the user determine whether or not the program should keep running.
     """
-    response = 'y'
-    while response == 'y':
-        program()
-        response = input('\nWould you like to carry out another transaction? [y/n] ').lower()
+
+    while True:
+        print('\nRain Bank')
+        print('-----'*5)
+        create_or_login = input('\nEnter 1 to create an account or 2 to log  into existing account: ')
+
+        while create_or_login not in ['1', '2']:
+            print('\nInvalid Selection. Try again...')
+            create_or_login = input('\nEnter 1 to create an account or 2 to log  into existing account: ')
+
+        if create_or_login == '1':
+            accountCreationWizard()
+        elif create_or_login == '2':
+            loginWizard()
         
-        if response == 'n':
+        repeat_program = input('\nWould you like to carry out another transaction? [y/n] ').lower()
+        
+        if repeat_program != 'y':
             print("\nProgram shutdown initiated.... \nShutdown Complete!")
             print("--------"*10)
-            
-        while response not in ['y', 'n']:
-            print('\nInvalid selection...')
-            response = input('\nWould you like to carry out another transaction? [y/n] ')
+            break
 
-main()
+
+if __name__ == "__main__":
+    main()
