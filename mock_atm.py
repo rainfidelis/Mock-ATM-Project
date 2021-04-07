@@ -187,6 +187,39 @@ def ChangePassword():
     user_database[account_number][3] = approved_password
 
 
+def transfer(balance):
+    """
+    Requests the amount to be transferred and a valid 10-digit receiving account number that starts with '0'. 
+    Asks the user to confirm the transfer, and checks to confirm transfer amount is within user's exisiting balance.
+    Transfer is terminated if the amount excedes the user's balance or the user fails to confirm.
+    
+    Args:
+        (int) balance - User's current balance
+    """
+    transfer_amount = int(input("\nEnter transfer amount: "))
+    transfer_account = input("\nEnter receiving account number: ")
+    
+    confirm_account = re.search("^0[0-9]{9}$", transfer_account)
+    
+    while confirm_account == None:
+        print("\nInvalid account number...")
+        transfer_account = input("\nEnter receiving account number: ")
+        confirm_account = re.search("^0[0-9]{9}$", transfer_account)
+
+
+    confirm_transfer = input(f"\nTransfer {transfer_amount} to {transfer_account}? [y/n]\n")
+
+    if confirm_transfer == 'y':
+        if transfer_amount <= balance:
+            user_database[account_number][-1] = balance - transfer_amount
+            print("\nTransfer Successful!")
+            print(f"\nTransferred {transfer_amount} to {transfer_account}")
+        else:
+            print("\nTransfer failed! You do not have enough for this transfer...")
+    else:
+        print("Transaction terminated!")
+
+
 def TransactionWizard():
     """
     Receive user's desired transaction as a number input and execute. 
@@ -204,13 +237,15 @@ def TransactionWizard():
     print(f'\nWelcome {first_name}! What would you like to do today?')
     
     try:  # Catch the error if someone enters a string instead of an integer value
-        action = int(input("\nEnter: \n1 - Withdrawal \n2 - Deposit \n3 - Check Account Balance \n4 - Dispute Resolution \n5 - Change Password \n"))
+        action = int(input("\nEnter: \n1 - Withdrawal \n2 - Deposit \n3 - Check Account Balance"
+        "\n4 - Transfer \n5 - Dispute Resolution \n6 - Change Password \n"))
     except TypeError:
         print("Expected a number, got a string. Try again later...")
 
-    while action not in range(1, 6):
+    while action not in range(1, 7):
         print('\nYou have selected an invalid option. Please try again...')
-        action = int(input("\nEnter: \n1 - Withdrawal \n2 - Deposit \n3 - Balance Checker \n4 - Dispute Resolution \n5 - Change Password\n"))
+        action = int(input("\nEnter: \n1 - Withdrawal \n2 - Deposit \n3 - Balance Checker"
+        "\n4 - Dispute Resolution \n5 - Change Password\n"))
     
     if action == 1:
         # Receive amount to be withdrawn and subtract it from user's balance
@@ -227,15 +262,19 @@ def TransactionWizard():
         print(f'\nAccount balance: NGN {balance}')
         
     elif action == 4:
+        # Transfer funds to provided account if it is within user's balance
+        transfer(balance)
+
+    elif action == 5:
         # Record user complaint and exit
         complaint = input("\nWhat issue would you like to report? \n")
         complaints[account_number] = complaint
         print("\nThank you for contacting us. Your complaint will be reviewed immediately.")
         
-    elif action == 5:
+    elif action == 6:
         # Receive new password entry and confirm it matches stated guidelines
         ChangePassword()
-    
+
 
 def main():
     """
@@ -243,26 +282,27 @@ def main():
     Allows the user determine whether or not the program should keep running.
     """
 
-    while True:
-        print('\nRain Bank')
-        print('-----'*5)
+    print('\nRain Bank')
+    print('-----'*5)
+    create_or_login = input('\nEnter 1 to create an account or 2 to log  into existing account: ')
+
+    while create_or_login not in ['1', '2']:
+        print('\nInvalid Selection. Try again...')
         create_or_login = input('\nEnter 1 to create an account or 2 to log  into existing account: ')
 
-        while create_or_login not in ['1', '2']:
-            print('\nInvalid Selection. Try again...')
-            create_or_login = input('\nEnter 1 to create an account or 2 to log  into existing account: ')
-
-        if create_or_login == '1':
-            AccountCreationWizard()
-        elif create_or_login == '2':
-            LoginWizard()
+    if create_or_login == '1':
+        AccountCreationWizard()
+    elif create_or_login == '2':
+        LoginWizard()
+    
+    another_transaction = input('\nWould you like to carry out another transaction? [y/n] ').lower()
         
-        repeat_program = input('\nWould you like to carry out another transaction? [y/n] ').lower()
-        
-        if repeat_program != 'y':
-            print("\nProgram shutdown initiated.... \nShutdown Complete!")
-            print("--------"*10)
-            break
+    while another_transaction == 'y':
+        TransactionWizard()
+        another_transaction = input('\nWould you like to carry out another transaction? [y/n] ').lower()
+    else:
+        print("\nProgram shutdown initiated.... \nShutdown Complete!")
+        print("--------"*10)
 
 
 if __name__ == "__main__":
