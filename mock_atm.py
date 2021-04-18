@@ -129,50 +129,55 @@ def LoginWizard():
             TransactionWizard()
 
 
-def withdrawal(withdraw_amount):
+def withdrawal():
     """
     Confirms the user wants to proceed with the withdrawal of said amount, 
     and then proceeds to verify user's balance is enough for such withdrawal.
     If withdrawal is possible within the existing balance, approve withdrawal and update the balance.
     Else, user is alerted if balance is insufficient and the transaction is terminated.
-
-    Args:
-        (int) withdraw_amount - the amount the user wants to withdraw
     """
-    confirm_withdraw = input(f'\nWithdraw {withdraw_amount}?[y/n]\n').lower()
-    
-    if confirm_withdraw == 'y':
-        if withdraw_amount <= user_database[account_number][-1]:  # Confirm the withdrawal amount is less than the balance
-            user_database[account_number][-1] -= withdraw_amount
-            print(f"\nWithdrawal Successful! Please take your cash.")
-        else:  # Cancel transaction if otherwise
-            print('\nInsufficient balance...')
-    elif confirm_withdraw == 'n':  # Cancel withdrawal if user selects "n"
-        print('\nWithdrawal canceled!')
-    else:
-        print('\nInvalid selection...')
-        withdrawal(withdraw_amount)  # Keep program running until a suitable response is provided 
+    withdraw_amount = int(input("\nHow much would you like to withdraw? \n"))
+
+    while True:
+        confirm_withdraw = input(f'\nWithdraw {withdraw_amount}?[y/n]\n').lower()
+        
+        if confirm_withdraw == 'y':
+            if withdraw_amount <= user_database[account_number][-1]:  # Confirm the withdrawal amount is less than the balance
+                user_database[account_number][-1] -= withdraw_amount
+                print(f"\nWithdrawal Successful! Please take your cash.")
+                break
+            else:  # Cancel transaction if otherwise
+                print('\nInsufficient balance...')
+                break
+        elif confirm_withdraw == 'n':  # Cancel withdrawal if user selects "n"
+            print('\nWithdrawal canceled!')
+            break
+        else:
+            print('\nInvalid selection...')
+            continue  # Keep program running until a suitable response is provided 
 
 
-def deposit(deposit_amount):
+def deposit():
     """
     Receives as input the amount desired to be deposited by the user.
     Confirms the deposit amount, and adds same to the user's balance. 
     Terminate the transaction if the user' changes their mind.
-
-    Args:
-        (int) deposit_amount - the amount the user wishes to deposit
     """
-    confirm_deposit = input(f'\nDeposit {deposit_amount}? [y/n] \n').lower()
+    deposit_amount = int(input("\nHow much would you like to deposit? \n"))
     
-    if confirm_deposit =='y':
-        user_database[account_number][-1] += deposit_amount
-        print(f"\nTransaction Successful!")
-    elif confirm_deposit == 'n':
-        print('\nDeposit canceled!')
-    else:
-        print('\nInvalid selction...')
-        deposit(deposit_amount)  # Keep program running until a suitable answer is provided
+    while True:
+        confirm_deposit = input(f'\nDeposit {deposit_amount}? [y/n] \n').lower()
+        
+        if confirm_deposit =='y':
+            user_database[account_number][-1] += deposit_amount
+            print(f"\nTransaction Successful!")
+            break
+        elif confirm_deposit == 'n':
+            print('\nDeposit canceled!')
+            break
+        else:
+            print('\nInvalid selction...')
+            continue  # Keep program running until a suitable answer is provided
 
 
 def ChangePassword():
@@ -187,6 +192,12 @@ def ChangePassword():
     user_database[account_number][3] = approved_password
 
 
+def lodge_complaint():
+    complaint = input("\nWhat issue would you like to report? \n")
+    complaints[account_number] = complaint
+    print("\nThank you for contacting us. Your complaint will be reviewed immediately.")
+        
+
 def transfer(balance):
     """
     Requests the amount to be transferred and a valid 10-digit receiving account number that starts with '0'. 
@@ -199,6 +210,7 @@ def transfer(balance):
     transfer_amount = int(input("\nEnter transfer amount: "))
     transfer_account = input("\nEnter receiving account number: ")
     
+    # Confirm receiving account is a valid account type
     confirm_account = re.search("^0[0-9]{9}$", transfer_account)
     
     while confirm_account == None:
@@ -206,11 +218,15 @@ def transfer(balance):
         transfer_account = input("\nEnter receiving account number: ")
         confirm_account = re.search("^0[0-9]{9}$", transfer_account)
 
+    # Prompt user to confirm transfer details
+    confirm_transfer = input(f"\nTransfer {transfer_amount} to {transfer_account}? [y/n]")
 
-    confirm_transfer = input(f"\nTransfer {transfer_amount} to {transfer_account}? [y/n]\n")
+    while confirm_transfer not in ['y', 'n']:
+        print("\nYou've entered an invalid command")
+        confirm_transfer = input(f"\nTransfer {transfer_amount} to {transfer_account}? [y/n]")
 
     if confirm_transfer == 'y':
-        if transfer_amount <= balance:
+        if transfer_amount <= balance:  # Confirm transaction is possible within user's account balance
             user_database[account_number][-1] = balance - transfer_amount
             print("\nTransfer Successful!")
             print(f"\nTransferred {transfer_amount} to {transfer_account}")
@@ -249,13 +265,11 @@ def TransactionWizard():
     
     if action == 1:
         # Receive amount to be withdrawn and subtract it from user's balance
-        withdraw_amount = int(input("\nHow much would you like to withdraw? \n"))
-        withdrawal(withdraw_amount)
+        withdrawal()
         
     elif action == 2:
         # Receive amount to deposit and add to user's previous balance 
-        deposit_amount = int(input("\nHow much would you like to deposit? \n"))
-        deposit(deposit_amount)
+        deposit()
         
     elif action == 3:
         # Check user' balance
@@ -267,9 +281,7 @@ def TransactionWizard():
 
     elif action == 5:
         # Record user complaint and exit
-        complaint = input("\nWhat issue would you like to report? \n")
-        complaints[account_number] = complaint
-        print("\nThank you for contacting us. Your complaint will be reviewed immediately.")
+        lodge_complaint()
         
     elif action == 6:
         # Receive new password entry and confirm it matches stated guidelines
