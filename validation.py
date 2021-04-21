@@ -1,7 +1,7 @@
 import os
 import re
-import mock_atm
 import database
+from getpass import getpass
 
 
 starting_path = "database/user_record/"
@@ -20,7 +20,7 @@ def PasswordChecker(passkey):
     """
     while len(passkey) < 5:
         print('\n*****Password should have at least 5 characters*****')
-        passkey = input('\nEnter password: ')
+        passkey = getpass('\nEnter password: ')
     else:
         return passkey
 
@@ -57,17 +57,21 @@ def EmailChecker(email):
     Returns:
         (str) valid_email - an approved email address matching the provided standard
     """
-    if email_exists(email):
-        print("\nThis user already exists. Please log into your already existing account...")
-        mock_atm.LoginWizard()
-
-    else:
+    valid_email = re.search("^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$", email)
+    
+    while valid_email == None:
+        print("\nInvalid email format. Try again...")
+        email = input("\nEmail address: ").lower()
         valid_email = re.search("^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$", email)
-        
-        while valid_email == None:
-            print("\nInvalid email format. Try again...")
-            email = input("\nEmail address: ").lower()
-            valid_email = re.search("^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$", email)
-        
-        else:
-            return email
+    
+    else:
+        return email
+
+
+def password_match(account_number, password):
+    
+    user_details = str.split(database.read_user(account_number), ",")
+    if password == user_details[3]:
+        return True
+    else:
+        return False

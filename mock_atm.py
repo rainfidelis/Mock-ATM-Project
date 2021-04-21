@@ -3,9 +3,10 @@ import time
 import sys
 import random
 import re
+import os
 import validation
 import database
-
+from getpass import getpass
 
 complaints = {}  # Empty dictionary to store user complaints
 account_number = " "  # Initialize account_number variable for usage across functions
@@ -44,22 +45,26 @@ def AccountCreationWizard():
     first_name = input('\nFirst Name: ').capitalize()
     last_name = input('\nLast Name: ').capitalize()
     email = input('\nEmail Address: ').lower()
-    approved_email = validation.EmailChecker(email)  # Confirm provided email address is of valid format
-    print('')
-    print('\n*****Note: Password should have at least 5 characters*****')
-    password = input('\nPassword: ')
-    approved_password = validation.PasswordChecker(password)  # Confirm password contains atleast 5 characters
-    account_number = AccountNumberGenerator()
-    # starting_balance = 0
-    # user_database[account_number] = [first_name, last_name, approved_email, approved_password, starting_balance]
-    
-    if database.create_user(account_number, first_name, last_name, email, approved_password):
-        print(f'\nAccount Setup complete...')
-        LoginWizard()  # Launch the login portal once registration is successful
+
+    if validation.email_exists(email):
+        print("\nThis user already exists. Please login to your already existing account...")
+        LoginWizard()
 
     else:
-        print("Something went wrong. Please try again...")
-        AccountCreationWizard()
+        approved_email = validation.EmailChecker(email)  # Confirm provided email address is of valid format
+        print('')
+        print('\n*****Note: Password should have at least 5 characters*****')
+        password = getpass('\nPassword: ')
+        approved_password = validation.PasswordChecker(password)  # Confirm password contains atleast 5 characters
+        account_number = AccountNumberGenerator()
+        
+        if database.create_user(account_number, first_name, last_name, email, approved_password):
+            print(f'\nAccount Setup complete...')
+            LoginWizard()  # Launch the login portal once registration is successful
+
+        else:
+            print("Something went wrong. Please try again...")
+            AccountCreationWizard()
     
 
 def LoginWizard():
@@ -73,18 +78,19 @@ def LoginWizard():
     print('\nRain Account Login Portal')
     print('-----'*5)
     account_number = input('\nAccount Number: ')
-    if not validation.account_number_exists(account_number):  # Immediately confirm validity of account number before proceeding
+
+    while not validation.account_number_exists(account_number):  # Immediately confirm validity of account number before proceeding
         print('\nAccount not found. Please enter a valid account number...')
         account_number = input('\nAccount Number: ')
     
     else:
-        password = input('\nPassword: ')
+        password = getpass('\nPassword: ')
         password_count = 1  # Track incorrect password attempts
         
-        while password != user_database[account_number][3]:
+        while not validation.password_match(account_number, password):
             print('\nIncorrect password. Try again...')
             print(f'\nYou have {5 - password_count} attempts remaining')
-            password = input('\nPassword: ')
+            password = getpass('\nPassword: ')
             password_count += 1
             if password_count == 5:
                 sys.exit('\nToo many incorrect password attempts. Try again later...')
@@ -96,7 +102,20 @@ def LoginWizard():
             TransactionWizard()
 
 
-def withdrawal():
+def logout():
+    LoginWizard()
+
+
+def name_and_balance(account_number):
+    
+    user_details = str.split(database.read_user(account_number), ",")
+    account_balance = int(user_details[4])
+    name = user_details[0]
+    
+    return name, account_balance
+
+
+def withdrawal(balance):
     """
     Confirms the user wants to proceed with the withdrawal of said amount, 
     and then proceeds to verify user's balance is enough for such withdrawal.
@@ -106,11 +125,12 @@ def withdrawal():
     withdraw_amount = int(input("\nHow much would you like to withdraw? \n"))
 
     while True:
-        confirm_withdraw = input(f'\nWithdraw {withdraw_amount}?[y/n]\n').lower()
+        confirm_withdraw = input(f'\nWithdraw {withdraw_amount}? [y/n] ').lower()
         
         if confirm_withdraw == 'y':
-            if withdraw_amount <= user_database[account_number][-1]:  # Confirm the withdrawal amount is less than the balance
-                user_database[account_number][-1] -= withdraw_amount
+            if withdraw_amount <= balance:  # Confirm the withdrawal amount is less than the balance
+                balance -= withdraw_amount
+                database.update_user(account_number, 4, str(balance))
                 print(f"\nWithdrawal Successful! Please take your cash.")
                 break
             else:  # Cancel transaction if otherwise
@@ -124,7 +144,7 @@ def withdrawal():
             continue  # Keep program running until a suitable response is provided 
 
 
-def deposit():
+def deposit(balance):
     """
     Receives as input the amount desired to be deposited by the user.
     Confirms the deposit amount, and adds same to the user's balance. 
@@ -136,7 +156,8 @@ def deposit():
         confirm_deposit = input(f'\nDeposit {deposit_amount}? [y/n] \n').lower()
         
         if confirm_deposit =='y':
-            user_database[account_number][-1] += deposit_amount
+            balance += deposit_amount
+            database.update_user(account_number, 4, str(balance))
             print(f"\nTransaction Successful!")
             break
         elif confirm_deposit == 'n':
@@ -153,13 +174,13 @@ def ChangePassword():
     and stores it in the user_database as a replacement for the existing password.
     """
     print('\n*****Note: Password should be at least 5 characters*****')
-    password = input('\nEnter new password: ')
-    approved_password = PasswordChecker(password)  # Confirm validity of new password
+    password = getpass('\nEnter new password: ')
+    approved_password = validation.PasswordChecker(password)  # Confirm validity of new password
+    database.update_user(account_number, 3, approved_password)
     print('\nNew password set...')
-    user_database[account_number][3] = approved_password
 
 
-def lodge_complaint():
+def LodgeComplaint():
     complaint = input("\nWhat issue would you like to report? \n")
     complaints[account_number] = complaint
     print("\nThank you for contacting us. Your complaint will be reviewed immediately.")
@@ -174,6 +195,8 @@ def transfer(balance):
     Args:
         (int) balance - User's current balance
     """
+    # Block users from transferring to the same account doing the transfer
+
     transfer_amount = int(input("\nEnter transfer amount: "))
     transfer_account = input("\nEnter receiving account number: ")
     
@@ -186,21 +209,25 @@ def transfer(balance):
         confirm_account = re.search("^0[0-9]{9}$", transfer_account)
 
     # Prompt user to confirm transfer details
-    confirm_transfer = input(f"\nTransfer {transfer_amount} to {transfer_account}? [y/n]")
+    while True:
+        confirm_transfer = input(f"\nTransfer {transfer_amount} to {transfer_account}? [y/n] ").lower()
 
-    while confirm_transfer not in ['y', 'n']:
-        print("\nYou've entered an invalid command")
-        confirm_transfer = input(f"\nTransfer {transfer_amount} to {transfer_account}? [y/n]")
-
-    if confirm_transfer == 'y':
-        if transfer_amount <= balance:  # Confirm transaction is possible within user's account balance
-            user_database[account_number][-1] = balance - transfer_amount
-            print("\nTransfer Successful!")
-            print(f"\nTransferred {transfer_amount} to {transfer_account}")
+        if confirm_transfer == 'y':
+            if transfer_amount <= balance:  # Confirm transaction is possible within user's account balance
+                balance -= transfer_amount
+                database.update_user(account_number, 4, str(balance))
+                print("\nTransfer Successful!")
+                print(f"\nTransferred {transfer_amount} to {transfer_account}")
+                break
+            else:
+                print("\nTransfer failed! You do not have enough money for this transfer...")
+                break
+        elif confirm_transfer == 'n':
+            print("\nTransaction terminated!")
+            break
         else:
-            print("\nTransfer failed! You do not have enough for this transfer...")
-    else:
-        print("Transaction terminated!")
+            print("\nYou've entered an invalid command. Try again...")
+            continue
 
 
 def TransactionWizard():
@@ -213,30 +240,36 @@ def TransactionWizard():
     Dispute resolution: Receives user's complaint and sends to where it may be needed.
     """
    
-    global account_number, user_database  # inherit and update (if needed) the global variables name and user_database
-    balance = user_database[account_number][-1]
-    first_name = user_database[account_number][0]
+    global account_number  # inherit and update (if needed) the global variables name and user_database
+    first_name, balance = name_and_balance(account_number)
+    
     # Receive action command from user
     print(f'\nWelcome {first_name}! What would you like to do today?')
     
-    try:  # Catch the error if someone enters a string instead of an integer value
-        action = int(input("\nEnter: \n1 - Withdrawal \n2 - Deposit \n3 - Check Account Balance"
-        "\n4 - Transfer \n5 - Dispute Resolution \n6 - Change Password \n"))
-    except TypeError:
-        print("Expected a number, got a string. Try again later...")
+    while True:
+        try:  # Catch the error if someone enters a string instead of an integer value
+            action = int(input("\nEnter: \n1 - Withdrawal \n2 - Deposit \n3 - Check Account Balance"
+            "\n4 - Transfer \n5 - Dispute Resolution \n6 - Change Password \n0 - Logout \n"))
+        except ValueError:
+            print("Ooops!!! Expected a number, got a string. Try again later...")
+            continue
+        else:
+            break
 
-    while action not in range(1, 7):
+    if action not in range(0, 7):
         print('\nYou have selected an invalid option. Please try again...')
-        action = int(input("\nEnter: \n1 - Withdrawal \n2 - Deposit \n3 - Balance Checker"
-        "\n4 - Dispute Resolution \n5 - Change Password\n"))
+        TransactionWizard()
     
-    if action == 1:
+    if action == 0:
+        logout()
+
+    elif action == 1:
         # Receive amount to be withdrawn and subtract it from user's balance
-        withdrawal()
+        withdrawal(balance)
         
     elif action == 2:
         # Receive amount to deposit and add to user's previous balance 
-        deposit()
+        deposit(balance)
         
     elif action == 3:
         # Check user' balance
@@ -248,7 +281,7 @@ def TransactionWizard():
 
     elif action == 5:
         # Record user complaint and exit
-        lodge_complaint()
+        LodgeComplaint()
         
     elif action == 6:
         # Receive new password entry and confirm it matches stated guidelines
@@ -263,7 +296,7 @@ def main():
 
     print('\nRain Bank')
     print('-----'*5)
-    create_or_login = input('\nEnter 1 to create an account or 2 to log  into existing account: ')
+    create_or_login = input('\nEnter 1 to create an account or 2 to login to an existing account: ')
 
     while create_or_login not in ['1', '2']:
         print('\nInvalid Selection. Try again...')

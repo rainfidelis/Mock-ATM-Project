@@ -31,7 +31,7 @@ def read_user(account_number):
     
     try:
         if account_path != None:
-            f = open(starting_path + account_number, "r")
+            f = open(starting_path + account_number, 'r')
         elif plain_account_number != None:
             f = open(starting_path + account_number + ".txt", 'r')
         else:
@@ -49,8 +49,28 @@ def read_user(account_number):
         return data
 
     
+def update_user(account_number, pos, new_data):
+    # Update existing user details in specified position
+    modified_user_details = ""
+    
+    # read user detail into a list and modify desired position
+    data_list = str.split(read_user(account_number), ',')
+    data_list[pos] = new_data
+    
+    for detail in data_list:
+        if detail == data_list[-1]:
+            modified_user_details += detail  # do not add a trailing comma after the last list item
+        else:
+            modified_user_details += (detail + ",")  # add detail and trailing comma
+    
+    # open file for writing and append modified user details
+    f = open(starting_path + account_number + ".txt", 'w')
+    f.write(modified_user_details)
+    f.close()
+
+
 def delete_user(account_number):
-    # Update existing user details in database
+    # Delete existing user file in database
 
     success = False
     path = starting_path + account_number + ".txt"
@@ -64,14 +84,3 @@ def delete_user(account_number):
         print("User file not found. Try again...")
     
     return success
-
-
-def update_user():
-    # Delete existing user from database
-    return ""
-
-
-# create_user("0705480437", "'Seyi', 'Onifade', 'seyioni@zuri.com', 'passSeyi', 100000")
-# read_user("0705480437")
-# print(read_user("0764239943.txt"))
-# find_account_number()
