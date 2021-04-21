@@ -3,53 +3,12 @@ import time
 import sys
 import random
 import re
+import validation
+import database
 
-# Launch user database with existing customer data
-user_database = {
-    '0705480437': ['Seyi', 'Onifade', 'seyioni@zuri.com', 'passSeyi', 100000], 
-    '0688874292': ['Nonso', 'Obi', 'nonsobi@gmail.com', 'non1so', 80000]
-    }
 
 complaints = {}  # Empty dictionary to store user complaints
 account_number = " "  # Initialize account_number variable for usage across functions
- 
-def PasswordChecker(passkey):
-    """
-    Confirms validity of newly created password. 
-    Only passwords with at least 5 characters are accepted.
-
-    Args:
-        (str) passkey - a string of letters and numbers provided as password
-
-    Returns:
-        (str) passkey - an approved passkey of minimum 5 characters
-    """
-    while len(passkey) < 5:
-        print('\n*****Password should have at least 5 characters*****')
-        passkey = input('\nEnter password: ')
-    else:
-        return passkey
-
-
-def EmailChecker(email):
-    """
-    Checks email address and confirms it is a valid address. 
-    A valid email address follows the format: name@website.domain
-
-    Args:
-        (str) email - the user provided email address
-
-    Returns:
-        (str) valid_email - an approved email address matching the provided standard
-    """
-    valid_email = re.search("^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$", email)
-    
-    while valid_email == None:
-        print("\nInvalid email format. Try again...")
-        email = input("\nEmail address: ").lower()
-        valid_email = re.search("^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$", email)
-    else:
-        return valid_email
 
 
 def AccountNumberGenerator():
@@ -65,48 +24,56 @@ def AccountNumberGenerator():
     first = '0'
     last = str(random.randrange(111111111, 999999999))
     account_number = (first+last)
-    while account_number in user_database.keys():
+    
+    while validation.account_number_exists(account_number):
         AccountNumberGenerator()  # Run the program again if generated account number already exists
+    
     else:
         print(f'\nYour new account number is: {account_number}')
         return account_number
     
 
-def  AccountCreationWizard():
+def AccountCreationWizard():
     """
     Receives new user's desired username and password and append to the names and passwords lists. 
     Also assign a starting balance of NGN 0 to the user's balance. Does not allow new users use an already existing username. 
     """
-    global user_database, account_number  # inherit and update the global variable user_database
+    global account_number  # inherit and update the global variable user_database
     
     print('\nRain Account Creation Wizard!')
     first_name = input('\nFirst Name: ').capitalize()
     last_name = input('\nLast Name: ').capitalize()
     email = input('\nEmail Address: ').lower()
-    approved_email = EmailChecker(email)  # Confirm provided email address is of valid format
+    approved_email = validation.EmailChecker(email)  # Confirm provided email address is of valid format
     print('')
     print('\n*****Note: Password should have at least 5 characters*****')
     password = input('\nPassword: ')
-    approved_password = PasswordChecker(password)  # Confirm password contains atleast 5 characters
+    approved_password = validation.PasswordChecker(password)  # Confirm password contains atleast 5 characters
     account_number = AccountNumberGenerator()
-    starting_balance = 0
-    user_database[account_number] = [first_name, last_name, approved_email, approved_password, starting_balance]
-    print(f'\nAccount Setup complete...')
-    LoginWizard()  # Launch the login portal once registration is successful
+    # starting_balance = 0
+    # user_database[account_number] = [first_name, last_name, approved_email, approved_password, starting_balance]
     
+    if database.create_user(account_number, first_name, last_name, email, approved_password):
+        print(f'\nAccount Setup complete...')
+        LoginWizard()  # Launch the login portal once registration is successful
+
+    else:
+        print("Something went wrong. Please try again...")
+        AccountCreationWizard()
     
+
 def LoginWizard():
     """
     Requests for user's name and password and confirms match with existing database before proceeding to the transaction wizard.
     Exits the program if user attempts 5 incorrect password entries.
     """
-    global account_number, user_database  # inherit and update the global variables name and user_database
+    global account_number  # inherit and update the global variables name and user_database
     
     print('-----'*5)
     print('\nRain Account Login Portal')
     print('-----'*5)
     account_number = input('\nAccount Number: ')
-    while account_number not in user_database.keys():  # Immediately confirm validity of account number before proceeding
+    if not validation.account_number_exists(account_number):  # Immediately confirm validity of account number before proceeding
         print('\nAccount not found. Please enter a valid account number...')
         account_number = input('\nAccount Number: ')
     
