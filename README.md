@@ -18,6 +18,12 @@ Once login is confirmed, the user would be able to carry out any of a number of 
 + Lodging a complaint
 + Changing password
 
+## Latest Improvements
++ Users can no longer be allowed to open multiple accounts using the same email address. As part of the account creation process, any email addresses already existing in the system is flagged, and account creation blocked. 
++ User profiles are now stored permanently in a local directory. This means a user's info isn't lost at the end of a program's running cycle.
+
 ## Expected further improvements
-+ Write directly to a local file to ensure changes during program runs are permanent
++ Write directly to a SQL database rather than a local directory.
 + Improve expected password difficulty using regular expression
++ Build a complaint's database for each user
++ Keep a log of each user's activity.
